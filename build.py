@@ -22,6 +22,7 @@ TITLES = {
     "faq": ("Preguntas frecuentes — EL PATIET", "Preguntes freqüents — EL PATIET"),
     "contacto": ("Contacto — EL PATIET", "Contacte — EL PATIET"),
     "condiciones": ("Condiciones y privacidad — EL PATIET", "Condicions i privacitat — EL PATIET"),
+    "reserva-confirmada": ("Reserva confirmada — EL PATIET", "Reserva confirmada — EL PATIET"),
 }
 
 BALLOON_VARS = ["--brand", "--accent", "--balloon-green", "--balloon-pink", "--balloon-purple", "--balloon-turquoise"]
@@ -369,17 +370,17 @@ def content_reservar(lang):
         return """
 <section class="container" style="padding-top:52px;">
   <h1>Reservar</h1>
-  <p class="lead">Elige un día libre en el calendario. El pago de la señal todavía no está conectado — eso llega en la siguiente fase.</p>
+  <p class="lead">Elige un día libre en el calendario, rellena tus datos y paga la señal — el día queda solo para ti al confirmarse el pago.</p>
   <div class="reserve-shell">
     <div class="reserve-panel">
       <div id="calendario"></div>
       <div id="calSelection" class="note" style="margin-top:16px;"></div>
+      <div id="reservaFormWrap" style="display:none; margin-top:22px;"></div>
     </div>
     <div class="reserve-panel">
-      <h3>Confirmar por ahora</h3>
-      <p>Mientras el pago online no está activo, escríbenos con el día que ves libre y te confirmamos el resto.</p>
-      <a href="contacto.html" class="btn btn-primary">Escribir por WhatsApp</a>
-      <div class="note" style="margin-top:20px;">En cuanto el pago de la señal esté conectado, reservar y pagar se hará aquí mismo, sin pasar por WhatsApp.</div>
+      <h3>¿Prefieres hablarlo antes?</h3>
+      <p>Si tienes dudas antes de reservar, escríbenos directamente.</p>
+      <a href="contacto.html" class="btn btn-ghost">Escribir por WhatsApp</a>
     </div>
   </div>
 </section>
@@ -388,17 +389,17 @@ def content_reservar(lang):
         return """
 <section class="container" style="padding-top:52px;">
   <h1>Reservar</h1>
-  <p class="lead">Tria un dia lliure al calendari. El pagament del senyal encara no està connectat — arribarà en la següent fase.</p>
+  <p class="lead">Tria un dia lliure al calendari, omple les teues dades i paga el senyal — el dia queda només per a tu quan es confirme el pagament.</p>
   <div class="reserve-shell">
     <div class="reserve-panel">
       <div id="calendario"></div>
       <div id="calSelection" class="note" style="margin-top:16px;"></div>
+      <div id="reservaFormWrap" style="display:none; margin-top:22px;"></div>
     </div>
     <div class="reserve-panel">
-      <h3>Confirmar per ara</h3>
-      <p>Mentre el pagament en línia no estiga actiu, escriu-nos amb el dia que veus lliure i et confirmem la resta.</p>
-      <a href="contacto.html" class="btn btn-primary">Escriure per WhatsApp</a>
-      <div class="note" style="margin-top:20px;">Quan el pagament del senyal estiga connectat, reservar i pagar es farà ací mateix, sense passar per WhatsApp.</div>
+      <h3>Prefereixes parlar-ho abans?</h3>
+      <p>Si tens dubtes abans de reservar, escriu-nos directament.</p>
+      <a href="contacto.html" class="btn btn-ghost">Escriure per WhatsApp</a>
     </div>
   </div>
 </section>
@@ -504,6 +505,27 @@ def content_condiciones(lang):
 """
 
 
+def content_reserva_confirmada(lang):
+    if lang == "es":
+        return """
+<section class="container" style="padding-top:52px; text-align:center;">
+  <h1>¡Pago recibido! 🎈</h1>
+  <p class="lead" style="margin:0 auto;">Tu señal se ha procesado correctamente. En breve os contactaremos para confirmar los últimos detalles.</p>
+  <div class="note" style="max-width:480px; margin:24px auto 0; text-align:left;"><strong>Recuerda:</strong> esta web está en pruebas — este pago se ha hecho con la pasarela de Stripe en modo test, no es dinero real, y esta reserva concreta es solo para comprobar que el sistema funciona.</div>
+  <a href="index.html" class="btn btn-primary" style="margin-top:28px;">Volver al inicio</a>
+</section>
+"""
+    else:
+        return """
+<section class="container" style="padding-top:52px; text-align:center;">
+  <h1>Pagament rebut! 🎈</h1>
+  <p class="lead" style="margin:0 auto;">El teu senyal s'ha processat correctament. Prompte et contactarem per a confirmar els últims detalls.</p>
+  <div class="note" style="max-width:480px; margin:24px auto 0; text-align:left;"><strong>Recorda:</strong> esta web està en proves — este pagament s'ha fet amb la passarel·la de Stripe en mode test, no és diners real, i esta reserva concreta és només per a comprovar que el sistema funciona.</div>
+  <a href="index.html" class="btn btn-primary" style="margin-top:28px;">Tornar a l'inici</a>
+</section>
+"""
+
+
 PAGES = {
     "index": content_index,
     "el-local": content_el_local,
@@ -513,6 +535,7 @@ PAGES = {
     "faq": content_faq,
     "contacto": content_contacto,
     "condiciones": content_condiciones,
+    "reserva-confirmada": content_reserva_confirmada,
 }
 
 for slug, fn in PAGES.items():

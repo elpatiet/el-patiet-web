@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reservar — EL PATIET</title>
+<title>Reserva confirmada — EL PATIET</title>
 <meta name="description" content="EL PATIET: local privado con parque de bolas para alquilar por día completo.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%88%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,15 +23,15 @@
 <li><a href="el-local.html">El local</a></li>
 <li><a href="galeria.html">Galeria</a></li>
 <li><a href="precios.html">Preus</a></li>
-<li><a href="reservar.html" aria-current="page">Reservar</a></li>
+<li><a href="reservar.html">Reservar</a></li>
 <li><a href="faq.html">FAQ</a></li>
 <li><a href="contacto.html">Contacte</a></li>
       </ul>
     </nav>
     <div style="display:flex; align-items:center; gap:14px;">
       <div class="lang-switch">
-          <a href="../reservar.html">ES</a>
-          <a href="reservar.html" aria-current="true">VA</a>
+          <a href="../reserva-confirmada.html">ES</a>
+          <a href="reserva-confirmada.html" aria-current="true">VA</a>
         </div>
       <button class="nav-toggle" aria-label="Menú"><span></span></button>
     </div>
@@ -40,26 +40,16 @@
 
 <main>
 
-<section class="container" style="padding-top:52px;">
-  <h1>Reservar</h1>
-  <p class="lead">Tria un dia lliure al calendari, omple les teues dades i paga el senyal — el dia queda només per a tu quan es confirme el pagament.</p>
-  <div class="reserve-shell">
-    <div class="reserve-panel">
-      <div id="calendario"></div>
-      <div id="calSelection" class="note" style="margin-top:16px;"></div>
-      <div id="reservaFormWrap" style="display:none; margin-top:22px;"></div>
-    </div>
-    <div class="reserve-panel">
-      <h3>Prefereixes parlar-ho abans?</h3>
-      <p>Si tens dubtes abans de reservar, escriu-nos directament.</p>
-      <a href="contacto.html" class="btn btn-ghost">Escriure per WhatsApp</a>
-    </div>
-  </div>
+<section class="container" style="padding-top:52px; text-align:center;">
+  <h1>Pagament rebut! 🎈</h1>
+  <p class="lead" style="margin:0 auto;">El teu senyal s'ha processat correctament. Prompte et contactarem per a confirmar els últims detalls.</p>
+  <div class="note" style="max-width:480px; margin:24px auto 0; text-align:left;"><strong>Recorda:</strong> esta web està en proves — este pagament s'ha fet amb la passarel·la de Stripe en mode test, no és diners real, i esta reserva concreta és només per a comprovar que el sistema funciona.</div>
+  <a href="index.html" class="btn btn-primary" style="margin-top:28px;">Tornar a l'inici</a>
 </section>
 
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/reservas.js"></script>
+
 <footer>
   <div class="container">
     <div class="footer-grid">
