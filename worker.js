@@ -26,7 +26,17 @@ async function handleCrearPago(request, env, origin) {
   }
 
   if (!env.STRIPE_SECRET_KEY) {
-    return jsonError('Falta configurar la clave secreta de Stripe en el servidor.', 500);
+    return jsonError('Falta el binding STRIPE_SECRET_KEY en wrangler.jsonc.', 500);
+  }
+
+  let stripeSecretKey;
+  try {
+    stripeSecretKey = await env.STRIPE_SECRET_KEY.get();
+  } catch (e) {
+    return jsonError('No se ha podido leer la clave secreta de Stripe desde el Secrets Store.', 500);
+  }
+  if (!stripeSecretKey) {
+    return jsonError('La clave secreta de Stripe está vacía en el Secrets Store.', 500);
   }
 
   const idioma = lang === 'va' ? 'va' : 'es';
@@ -57,7 +67,7 @@ async function handleCrearPago(request, env, origin) {
     stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
+        'Authorization': `Bearer ${stripeSecretKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: params.toString(),

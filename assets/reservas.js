@@ -229,16 +229,18 @@
         lang: lang
       })
     })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data && data.url) {
-          window.location.href = data.url;
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (result.ok && result.data && result.data.url) {
+          window.location.href = result.data.url;
         } else {
-          throw new Error(data && data.error ? data.error : 'error');
+          throw new Error(result.data && result.data.error ? result.data.error : STR.submitError);
         }
       })
-      .catch(function () {
-        errBox.textContent = STR.submitError;
+      .catch(function (err) {
+        errBox.textContent = (err && err.message) ? err.message : STR.submitError;
         errBox.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = STR.submit;
