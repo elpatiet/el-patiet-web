@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel — EL PATIET</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="container" style="padding-top:52px; padding-bottom:60px; max-width:680px;">
+  <h1>Panel — EL PATIET</h1>
+
+  <div id="loginBox" class="reserve-panel" style="max-width:420px;">
+    <h3>Entrar</h3>
+    <label>Email</label>
+    <input type="email" id="adminEmail" autocomplete="username">
+    <label>Contraseña</label>
+    <input type="password" id="adminPassword" autocomplete="current-password">
+    <button class="btn btn-primary" id="loginBtn" style="margin-top:16px; width:100%; justify-content:center;">Entrar</button>
+    <div class="note" id="loginError" style="display:none; margin-top:12px; border-color:var(--balloon-red); color:var(--balloon-red);"></div>
+  </div>
+
+  <div id="panelBox" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <span id="userEmail" style="color:var(--ink-soft); font-size:0.9rem;"></span>
+      <button class="btn btn-ghost" id="logoutBtn">Salir</button>
+    </div>
+
+    <div class="reserve-panel">
+      <h3>Añadir reserva manual</h3>
+      <p style="font-size:0.9rem;">Para reservas por teléfono, WhatsApp o bloqueos propios (vacaciones, mantenimiento).</p>
+      <form id="addForm">
+        <label>Fecha</label>
+        <input type="date" id="fFecha" required>
+        <label>Estado</label>
+        <select id="fEstado">
+          <option value="confirmada">Confirmada (hay cliente)</option>
+          <option value="bloqueada">Bloqueada (uso propio / mantenimiento)</option>
+        </select>
+        <label>Nombre</label>
+        <input type="text" id="fNombre">
+        <label>Teléfono</label>
+        <input type="text" id="fTelefono">
+        <label>Tipo de evento</label>
+        <input type="text" id="fTipo">
+        <button type="submit" class="btn btn-primary" style="margin-top:16px;">Guardar</button>
+        <div class="note" id="addError" style="display:none; margin-top:12px; border-color:var(--balloon-red); color:var(--balloon-red);"></div>
+      </form>
+    </div>
+
+    <h2 style="margin-top:36px;">Próximas reservas</h2>
+    <div id="listaReservas"></div>
+  </div>
+</div>
+<script src="assets/admin.js"></script>
+</body>
+</html>
