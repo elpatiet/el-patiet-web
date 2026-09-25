@@ -72,36 +72,62 @@
     var hoy = new Date().toISOString().slice(0, 10);
     client.from('reservas').select('*').gte('fecha', hoy).order('fecha').then(function (res) {
       var cont = document.getElementById('listaReservas');
+      cont.innerHTML = ''; // limpiar de forma segura (sin datos externos involucrados)
+
       if (res.error) {
-        cont.innerHTML = '<p class="note">No se han podido cargar las reservas.</p>';
+        var pErr = document.createElement('p');
+        pErr.className = 'note';
+        pErr.textContent = 'No se han podido cargar las reservas.';
+        cont.appendChild(pErr);
         return;
       }
       if (!res.data || res.data.length === 0) {
-        cont.innerHTML = '<p class="note">No hay reservas próximas.</p>';
+        var pVacio = document.createElement('p');
+        pVacio.className = 'note';
+        pVacio.textContent = 'No hay reservas próximas.';
+        cont.appendChild(pVacio);
         return;
       }
-      var html = '<table class="price-table"><thead><tr><th>Fecha</th><th>Estado</th><th>Nombre</th><th>Teléfono</th><th>Tipo</th><th></th></tr></thead><tbody>';
-      res.data.forEach(function (r) {
-        html += '<tr>' +
-          '<td>' + r.fecha + '</td>' +
-          '<td>' + r.estado + '</td>' +
-          '<td>' + (r.nombre_responsable || '—') + '</td>' +
-          '<td>' + (r.telefono || '—') + '</td>' +
-          '<td>' + (r.tipo_evento || '—') + '</td>' +
-          '<td><button type="button" class="btn btn-ghost" data-id="' + r.id + '" style="padding:6px 12px; font-size:0.85rem;">Liberar</button></td>' +
-          '</tr>';
-      });
-      html += '</tbody></table>';
-      cont.innerHTML = html;
 
-      var botones = cont.querySelectorAll('button[data-id]');
-      for (var i = 0; i < botones.length; i++) {
-        botones[i].addEventListener('click', function () {
-          var id = this.getAttribute('data-id');
-          if (!confirm('¿Liberar esta fecha?')) return;
-          client.from('reservas').delete().eq('id', id).then(function () { cargarReservas(); });
+      var table = document.createElement('table');
+      table.className = 'price-table';
+      var thead = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      ['Fecha', 'Estado', 'Nombre', 'Teléfono', 'Tipo', ''].forEach(function (texto) {
+        var th = document.createElement('th');
+        th.textContent = texto;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+      res.data.forEach(function (r) {
+        var tr = document.createElement('tr');
+        [r.fecha, r.estado, r.nombre_responsable || '—', r.telefono || '—', r.tipo_evento || '—'].forEach(function (valor) {
+          var td = document.createElement('td');
+          td.textContent = valor; // textContent: nunca se interpreta como HTML
+          tr.appendChild(td);
         });
-      }
+
+        var tdBtn = document.createElement('td');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-ghost';
+        btn.style.padding = '6px 12px';
+        btn.style.fontSize = '0.85rem';
+        btn.textContent = 'Liberar';
+        btn.addEventListener('click', function () {
+          if (!confirm('¿Liberar esta fecha?')) return;
+          client.from('reservas').delete().eq('id', r.id).then(function () { cargarReservas(); });
+        });
+        tdBtn.appendChild(btn);
+        tr.appendChild(tdBtn);
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      cont.appendChild(table);
     });
   }
 })();

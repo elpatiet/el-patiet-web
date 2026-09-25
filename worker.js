@@ -1,19 +1,104 @@
+const SUPABASE_URL = 'https://tzqghrtqckflkbtbmmqi.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_zZBi0SuXZy1aSGcKIMoHqw_j5UF5_6-';
+
+const SECURITY_HEADERS = {
+  'Content-Security-Policy':
+    "default-src 'self'; " +
+    "script-src 'self' https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data:; " +
+    "connect-src 'self' " + SUPABASE_URL + "; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "object-src 'none'",
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+};
+
+function conCabecerasSeguridad(response) {
+  const headers = new Headers(response.headers);
+  for (const k in SECURITY_HEADERS) {
+    headers.set(k, SECURITY_HEADERS[k]);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: headers,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    let response;
 
     if (url.pathname === '/api/crear-pago' && request.method === 'POST') {
-      return handleCrearPago(request, env, url.origin);
+      response = await handleCrearPago(request, env, url.origin);
+    } else if (url.pathname === '/api/webhook-stripe' && request.method === 'POST') {
+      response = await handleWebhookStripe(request, env);
+    } else {
+      response = await env.ASSETS.fetch(request);
     }
 
-    if (url.pathname === '/api/webhook-stripe' && request.method === 'POST') {
-      return handleWebhookStripe(request, env);
-    }
-
-    // Cualquier otra ruta: servir los archivos estáticos normales
-    return env.ASSETS.fetch(request);
+    return conCabecerasSeguridad(response);
   }
 };
+
+// -----------------------------------------------------------------
+// Validación de entrada (auditoría ELP-002 / ELP-009)
+// -----------------------------------------------------------------
+
+function fechaValidaYFutura(fecha) {
+  if (typeof fecha !== 'string') return false;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return false;
+  const hoy = new Date();
+  const hoyIso = hoy.getUTCFullYear() + '-' + String(hoy.getUTCMonth() + 1).padStart(2, '0') + '-' + String(hoy.getUTCDate()).padStart(2, '0');
+  return fecha >= hoyIso;
+}
+
+function textoValido(v, maxLen) {
+  return typeof v === 'string' && v.trim().length > 0 && v.length <= maxLen;
+}
+
+function emailValido(v) {
+  if (v === undefined || v === null || v === '') return true; // el email es opcional
+  return typeof v === 'string' && v.length <= 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function fechaYaOcupada(fecha) {
+  const url = SUPABASE_URL + '/rest/v1/disponibilidad?fecha=eq.' + encodeURIComponent(fecha) + '&select=fecha';
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    },
+  });
+  if (!res.ok) return null; // no se ha podido comprobar; se trata como "desconocido"
+  const data = await res.json();
+  return Array.isArray(data) && data.length > 0;
+}
+
+// -----------------------------------------------------------------
+// Crear el pago de la señal
+// -----------------------------------------------------------------
 
 async function handleCrearPago(request, env, origin) {
   let body;
@@ -25,8 +110,31 @@ async function handleCrearPago(request, env, origin) {
 
   const { fecha, nombre, telefono, email, tipo_evento, lang } = body;
 
-  if (!fecha || !nombre || !telefono) {
-    return jsonError('Faltan datos obligatorios (fecha, nombre, teléfono).', 400);
+  if (!fechaValidaYFutura(fecha)) {
+    return jsonError('La fecha indicada no es válida.', 400);
+  }
+  if (!textoValido(nombre, 120)) {
+    return jsonError('El nombre no es válido.', 400);
+  }
+  if (!textoValido(telefono, 40)) {
+    return jsonError('El teléfono no es válido.', 400);
+  }
+  if (!emailValido(email)) {
+    return jsonError('El email no es válido.', 400);
+  }
+  if (tipo_evento !== undefined && tipo_evento !== null && tipo_evento !== '' &&
+    (typeof tipo_evento !== 'string' || tipo_evento.length > 120)) {
+    return jsonError('El tipo de evento no es válido.', 400);
+  }
+
+  let ocupada;
+  try {
+    ocupada = await fechaYaOcupada(fecha);
+  } catch (e) {
+    ocupada = null;
+  }
+  if (ocupada === true) {
+    return jsonError('Ese día ya está reservado. Elige otra fecha.', 409);
   }
 
   if (!env.STRIPE_SECRET_KEY) {
@@ -37,10 +145,10 @@ async function handleCrearPago(request, env, origin) {
   try {
     stripeSecretKey = await env.STRIPE_SECRET_KEY.get();
   } catch (e) {
-    return jsonError('No se ha podido leer la clave secreta de Stripe desde el Secrets Store.', 500);
+    return jsonError('No se ha podido leer la clave secreta de Stripe.', 500);
   }
   if (!stripeSecretKey) {
-    return jsonError('La clave secreta de Stripe está vacía en el Secrets Store.', 500);
+    return jsonError('La clave secreta de Stripe está vacía.', 500);
   }
 
   const idioma = lang === 'va' ? 'va' : 'es';
@@ -80,11 +188,13 @@ async function handleCrearPago(request, env, origin) {
     return jsonError('No se ha podido contactar con Stripe.', 502);
   }
 
-  const session = await stripeRes.json();
-
   if (!stripeRes.ok) {
-    return jsonError(session.error && session.error.message ? session.error.message : 'Error creando el pago.', 500);
+    // No reenviamos el texto interno de Stripe al cliente (ELP-009): con los
+    // datos ya validados arriba, un fallo aquí es casi siempre de configuración.
+    return jsonError('No se ha podido iniciar el pago. Inténtalo de nuevo en unos minutos.', 500);
   }
+
+  const session = await stripeRes.json();
 
   return new Response(JSON.stringify({ url: session.url }), {
     headers: { 'Content-Type': 'application/json' },
@@ -130,6 +240,25 @@ async function handleWebhookStripe(request, env) {
     return new Response('JSON inválido.', { status: 400 });
   }
 
+  // Idempotencia (auditoría P1-7): si Stripe reenvía el mismo evento
+  // (reintentos, red lenta...), no queremos duplicar el email de aviso.
+  if (!env.SUPABASE_SERVICE_KEY) {
+    return new Response('Falta el binding SUPABASE_SERVICE_KEY.', { status: 500 });
+  }
+  let serviceKey;
+  try {
+    serviceKey = await env.SUPABASE_SERVICE_KEY.get();
+  } catch (e) {
+    return new Response('No se ha podido leer SUPABASE_SERVICE_KEY.', { status: 500 });
+  }
+
+  const yaProcesado = await eventoYaProcesado(serviceKey, event.id);
+  if (yaProcesado === true) {
+    return new Response(JSON.stringify({ received: true, duplicado: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object || {};
     const metadata = session.metadata || {};
@@ -139,7 +268,7 @@ async function handleWebhookStripe(request, env) {
       const email = session.customer_email ||
         (session.customer_details && session.customer_details.email) || null;
 
-      const resultado = await guardarReservaEnSupabase(env, {
+      const resultado = await guardarReservaEnSupabase(serviceKey, {
         fecha: fecha,
         nombre: metadata.nombre || null,
         telefono: metadata.telefono || null,
@@ -176,6 +305,22 @@ async function handleWebhookStripe(request, env) {
   });
 }
 
+async function eventoYaProcesado(serviceKey, eventId) {
+  var res = await fetch(SUPABASE_URL + '/rest/v1/stripe_events', {
+    method: 'POST',
+    headers: {
+      'apikey': serviceKey,
+      'Authorization': 'Bearer ' + serviceKey,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ id: eventId }),
+  });
+  if (res.status === 409) return true; // ya existía esa id => evento repetido
+  if (!res.ok) return null; // no se pudo comprobar; seguimos igualmente para no perder el evento
+  return false;
+}
+
 async function verifyStripeSignature(payload, signatureHeader, secret) {
   if (!signatureHeader) return false;
 
@@ -205,18 +350,8 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
   return computedHex === v1;
 }
 
-async function guardarReservaEnSupabase(env, datos) {
-  if (!env.SUPABASE_SERVICE_KEY) {
-    return { ok: false, mensaje: 'Falta el binding SUPABASE_SERVICE_KEY.' };
-  }
-  var serviceKey;
-  try {
-    serviceKey = await env.SUPABASE_SERVICE_KEY.get();
-  } catch (e) {
-    return { ok: false, mensaje: 'No se ha podido leer SUPABASE_SERVICE_KEY.' };
-  }
-
-  var res = await fetch('https://tzqghrtqckflkbtbmmqi.supabase.co/rest/v1/reservas', {
+async function guardarReservaEnSupabase(serviceKey, datos) {
+  var res = await fetch(SUPABASE_URL + '/rest/v1/reservas', {
     method: 'POST',
     headers: {
       'apikey': serviceKey,
@@ -245,6 +380,7 @@ async function guardarReservaEnSupabase(env, datos) {
 // -----------------------------------------------------------------
 // Emails de confirmación (Resend). Un fallo aquí nunca debe impedir
 // que la reserva quede guardada — por eso se llama siempre después.
+// Los campos escritos por el cliente se escapan antes de ir al HTML.
 // -----------------------------------------------------------------
 
 async function enviarConfirmaciones(env, datos) {
@@ -257,6 +393,8 @@ async function enviarConfirmaciones(env, datos) {
   }
 
   var remitente = 'EL PATIET <reservas@elpatiet.es>';
+  var nombreSeguro = escapeHtml(datos.nombre);
+  var fechaSegura = escapeHtml(datos.fecha);
   var mensajes = [];
 
   if (datos.email) {
@@ -265,8 +403,8 @@ async function enviarConfirmaciones(env, datos) {
       to: [datos.email],
       subject: 'Tu reserva en EL PATIET — ' + datos.fecha,
       html:
-        '<p>¡Hola' + (datos.nombre ? ' ' + datos.nombre : '') + '!</p>' +
-        '<p>Tu señal para el día <strong>' + datos.fecha + '</strong> se ha recibido correctamente. Ese día queda reservado para vosotros.</p>' +
+        '<p>¡Hola' + (nombreSeguro ? ' ' + nombreSeguro : '') + '!</p>' +
+        '<p>Tu señal para el día <strong>' + fechaSegura + '</strong> se ha recibido correctamente. Ese día queda reservado para vosotros.</p>' +
         '<p>En breve os contactaremos para concretar los últimos detalles.</p>' +
         '<p>— EL PATIET</p>',
     });
@@ -279,11 +417,11 @@ async function enviarConfirmaciones(env, datos) {
     html:
       '<p>Nueva reserva confirmada:</p>' +
       '<ul>' +
-      '<li>Fecha: ' + datos.fecha + '</li>' +
-      '<li>Nombre: ' + (datos.nombre || '—') + '</li>' +
-      '<li>Teléfono: ' + (datos.telefono || '—') + '</li>' +
-      '<li>Tipo de evento: ' + (datos.tipo_evento || '—') + '</li>' +
-      '<li>Email del cliente: ' + (datos.email || '—') + '</li>' +
+      '<li>Fecha: ' + fechaSegura + '</li>' +
+      '<li>Nombre: ' + (nombreSeguro || '—') + '</li>' +
+      '<li>Teléfono: ' + escapeHtml(datos.telefono || '—') + '</li>' +
+      '<li>Tipo de evento: ' + escapeHtml(datos.tipo_evento || '—') + '</li>' +
+      '<li>Email del cliente: ' + escapeHtml(datos.email || '—') + '</li>' +
       '</ul>',
   });
 
