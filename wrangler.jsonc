@@ -11,6 +11,16 @@
       "binding": "STRIPE_SECRET_KEY",
       "store_id": "d5063fb25fe74c408148be7b25829cc1",
       "secret_name": "STRIPE_SECRET_KEY"
+    },
+    {
+      "binding": "STRIPE_WEBHOOK_SECRET",
+      "store_id": "d5063fb25fe74c408148be7b25829cc1",
+      "secret_name": "STRIPE_WEBHOOK_SECRET"
+    },
+    {
+      "binding": "SUPABASE_SERVICE_KEY",
+      "store_id": "d5063fb25fe74c408148be7b25829cc1",
+      "secret_name": "SUPABASE_SERVICE_KEY"
     }
   ]
 }
