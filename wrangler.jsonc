@@ -21,6 +21,11 @@
       "binding": "SUPABASE_SERVICE_KEY",
       "store_id": "d5063fb25fe74c408148be7b25829cc1",
       "secret_name": "SUPABASE_SERVICE_KEY"
+    },
+    {
+      "binding": "RESEND_API_KEY",
+      "store_id": "d5063fb25fe74c408148be7b25829cc1",
+      "secret_name": "RESEND_API_KEY"
     }
   ]
 }

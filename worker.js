@@ -155,6 +155,19 @@ async function handleWebhookStripe(request, env) {
           headers: { 'Content-Type': 'application/json' },
         });
       }
+
+      // La reserva ya está guardada; un fallo de email nunca debe romper el webhook.
+      try {
+        await enviarConfirmaciones(env, {
+          fecha: fecha,
+          nombre: metadata.nombre || null,
+          telefono: metadata.telefono || null,
+          tipo_evento: metadata.tipo_evento || null,
+          email: email,
+        });
+      } catch (e) {
+        // se ignora: la reserva ya quedó guardada, el email es un extra
+      }
     }
   }
 
@@ -227,4 +240,65 @@ async function guardarReservaEnSupabase(env, datos) {
     return { ok: false, mensaje: 'Supabase rechazó la reserva (posible fecha ya ocupada): ' + texto };
   }
   return { ok: true };
+}
+
+// -----------------------------------------------------------------
+// Emails de confirmación (Resend). Un fallo aquí nunca debe impedir
+// que la reserva quede guardada — por eso se llama siempre después.
+// -----------------------------------------------------------------
+
+async function enviarConfirmaciones(env, datos) {
+  if (!env.RESEND_API_KEY) return;
+  var apiKey;
+  try {
+    apiKey = await env.RESEND_API_KEY.get();
+  } catch (e) {
+    return;
+  }
+
+  var remitente = 'EL PATIET <reservas@elpatiet.es>';
+  var mensajes = [];
+
+  if (datos.email) {
+    mensajes.push({
+      from: remitente,
+      to: [datos.email],
+      subject: 'Tu reserva en EL PATIET — ' + datos.fecha,
+      html:
+        '<p>¡Hola' + (datos.nombre ? ' ' + datos.nombre : '') + '!</p>' +
+        '<p>Tu señal para el día <strong>' + datos.fecha + '</strong> se ha recibido correctamente. Ese día queda reservado para vosotros.</p>' +
+        '<p>En breve os contactaremos para concretar los últimos detalles.</p>' +
+        '<p>— EL PATIET</p>',
+    });
+  }
+
+  mensajes.push({
+    from: remitente,
+    to: ['elpatietlocal@gmail.com'],
+    subject: 'Nueva reserva pagada — ' + datos.fecha,
+    html:
+      '<p>Nueva reserva confirmada:</p>' +
+      '<ul>' +
+      '<li>Fecha: ' + datos.fecha + '</li>' +
+      '<li>Nombre: ' + (datos.nombre || '—') + '</li>' +
+      '<li>Teléfono: ' + (datos.telefono || '—') + '</li>' +
+      '<li>Tipo de evento: ' + (datos.tipo_evento || '—') + '</li>' +
+      '<li>Email del cliente: ' + (datos.email || '—') + '</li>' +
+      '</ul>',
+  });
+
+  for (var i = 0; i < mensajes.length; i++) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mensajes[i]),
+      });
+    } catch (e) {
+      // seguimos con el siguiente email aunque uno falle
+    }
+  }
 }
